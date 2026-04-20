@@ -103,22 +103,27 @@ class Module extends AbstractModule
     protected function preInstall(): void
     {
         $services = $this->getServiceLocator();
-        $translate = $services->get('ControllerPluginManager')
-            ->get('translate');
+        $translator = $services->get('MvcTranslator');
+
+        $errors = [];
 
         if (!method_exists($this, 'checkModuleActiveVersion')
             || !$this->checkModuleActiveVersion('Common', '3.4.84')
         ) {
-            $message = new PsrMessage(
-                $translate('The module %1$s should be upgraded to version %2$s or later.'), // @translate
+            $message = new \Omeka\Stdlib\Message(
+                $translator->translate('The module %1$s should be upgraded to version %2$s or later.'), // @translate
                 'Common', '3.4.84'
             );
-            throw new \Omeka\Module\Exception\ModuleCannotInstallException(
-                (string) $message
-            );
+            $errors[] = (string) $message;
         }
 
-        $this->checkExtractOcr();
+        $this->checkExtractOcr($errors);
+
+        if ($errors) {
+            throw new \Omeka\Module\Exception\ModuleCannotInstallException(
+                implode("\n", $errors)
+            );
+        }
     }
 
     public function attachListeners(SharedEventManagerInterface $sharedEventManager): void
@@ -396,7 +401,7 @@ class Module extends AbstractModule
                     $translator->translate('The module %1$s should be upgraded to version %2$s or later.'), // @translate
                     'ExtractOcr', '3.4.8'
                 );
-                throw new \Omeka\Module\Exception\ModuleCannotInstallException((string) $message);
+                $errors[] = (string) $message;
             }
         }
     }
