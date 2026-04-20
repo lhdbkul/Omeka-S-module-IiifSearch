@@ -132,11 +132,17 @@ class Module extends AbstractModule
 
     public function handleIiifServerManifest(Event $event): void
     {
-        // Target is the view.
-        // Available keys: "format", the manifest, info etc according to format, "resource", "type".
+        // Target is the view. Available keys: "format", the manifest, info etc
+        // according to format, "resource", "type".
 
         // This is the iiif type, not omeka one.
         $type = $event->getParam('type');
+
+        if ($type === 'media' && $event->getParam('format') === 'canvas') {
+            $this->handleIiifServerCanvas($event);
+            return;
+        }
+
         if ($type !== 'item') {
             return;
         }
@@ -246,7 +252,134 @@ class Module extends AbstractModule
         $event->setParam('manifest', $manifest);
     }
 
-    protected function checkExtractOcr()
+    /**
+     * Inject seeAlso (ALTO) and supplementing annotations on each canvas of an
+     * item that owns a multipage ALTO XML media. Per-page resources are served
+     * by IiifSearch endpoints (/iiif-search/:id/alto/:n.xml and
+     * /iiif-search/:id/annotations/:n.json).
+     */
+    protected function handleIiifServerCanvas(Event $event): void
+    {
+        $services = $this->getServiceLocator();
+        $settings = $services->get('Omeka\Settings');
+        if (!$settings->get('iiifsearch_alto_canvas_inject', true)) {
+            return;
+        }
+
+        $media = $event->getParam('resource');
+        if (!$media instanceof \Omeka\Api\Representation\MediaRepresentation) {
+            return;
+        }
+        $item = $media->item();
+
+        $plugins = $services->get('ViewHelperManager');
+        if (!$plugins->has('xmlAltoSplitter')) {
+            return;
+        }
+        $splitter = $plugins->get('xmlAltoSplitter');
+        $altoMedia = $splitter->findMultipageAltoMedia($item);
+        if (!$altoMedia) {
+            return;
+        }
+        // The ALTO media itself is not a canvas-bearing media.
+        if ($altoMedia->id() === $media->id()) {
+            return;
+        }
+
+        $pageIndex = $this->canvasPageIndex($item, $media, $altoMedia);
+        if ($pageIndex === null) {
+            return;
+        }
+
+        // Generate (and cache) the per-page ALTO; skip injection if missing.
+        $altoPath = $splitter($item, $pageIndex);
+        if (!$altoPath) {
+            return;
+        }
+
+        $urlHelper = $plugins->get('url');
+        $identifier = $plugins->has('iiifCleanIdentifiers')
+            ? $plugins->get('iiifCleanIdentifiers')->__invoke($item->id())
+            : $item->id();
+        $encodeSlash = (bool) $settings->get('iiifserver_identifier_encode_slash', false);
+        $fixSlash = function (string $url) use ($encodeSlash): string {
+            return $encodeSlash ? $url : strtr($url, ['%252F' => '/', '%2F' => '/']);
+        };
+
+        $altoUrl = $fixSlash($urlHelper(
+            'iiifsearch/alto-page',
+            ['id' => $identifier, 'page' => $pageIndex],
+            ['force_canonical' => true]
+        ));
+        $annotationsUrl = $fixSlash($urlHelper(
+            'iiifsearch/annotation-page',
+            ['id' => $identifier, 'page' => $pageIndex],
+            ['force_canonical' => true]
+        ));
+
+        $canvas = $event->getParam('canvas');
+        $isVersion2 = !is_object($canvas);
+
+        if ($isVersion2) {
+            $canvas['seeAlso'][] = [
+                '@id' => $altoUrl,
+                'format' => 'application/xml+alto',
+                'profile' => 'http://www.loc.gov/standards/alto/v4/alto.xsd',
+                'label' => 'ALTO XML', // @translate
+            ];
+            $event->setParam('canvas', $canvas);
+            return;
+        }
+
+        $seeAlso = [
+            'id' => $altoUrl,
+            'type' => 'Dataset',
+            'format' => 'application/xml+alto',
+            'profile' => 'http://www.loc.gov/standards/alto/v4/alto.xsd',
+            'label' => ['none' => ['ALTO XML']],
+        ];
+        $annotationPage = [
+            'id' => $annotationsUrl,
+            'type' => 'AnnotationPage',
+        ];
+
+        if (method_exists($canvas, 'append')) {
+            $canvas->append('seeAlso', $seeAlso);
+            $canvas->append('annotations', $annotationPage);
+        } else {
+            $canvas['seeAlso'][] = $seeAlso;
+            $canvas['annotations'][] = $annotationPage;
+        }
+
+        $event->setParam('canvas', $canvas);
+    }
+
+    /**
+     * Map a canvas-bearing media to its zero-based ALTO page index.
+     *
+     * Default strategy: position among non-ALTO media of the item, matching the
+     * splitter "order" mapping. Other strategies are honored when the splitter
+     * is configured for them.
+     */
+    protected function canvasPageIndex(
+        \Omeka\Api\Representation\ItemRepresentation $item,
+        \Omeka\Api\Representation\MediaRepresentation $media,
+        \Omeka\Api\Representation\MediaRepresentation $altoMedia
+    ): ?int {
+        $i = 0;
+        foreach ($item->media() as $m) {
+            if ($m->id() === $altoMedia->id()) {
+                continue;
+            }
+            if ($m->id() === $media->id()) {
+                return $i;
+            }
+            $i++;
+        }
+        return null;
+    }
+
+    protected function checkExtractOcr(array &$errors = []): void
     {
         if (class_exists('ExtractOcr\Module', false)) {
             $services = $this->getServiceLocator();

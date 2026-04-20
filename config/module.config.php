@@ -13,6 +13,10 @@ return [
             'fixUtf8' => Service\ViewHelper\FixUtf8Factory::class,
             'iiifSearch' => Service\ViewHelper\IiifSearchFactory::class,
             'xmlAltoSingle' => Service\ViewHelper\XmlAltoSingleFactory::class,
+            'xmlAltoSplitter' => Service\ViewHelper\XmlAltoSplitterFactory::class,
+        ],
+        'invokables' => [
+            'iiifAltoAnnotations' => View\Helper\IiifAltoAnnotations::class,
         ],
     ],
     'form_elements' => [
@@ -82,6 +86,30 @@ return [
                             ],
                         ],
                     ],
+                    'alto-page' => [
+                        'type' => \Laminas\Router\Http\Segment::class,
+                        'options' => [
+                            'route' => '/alto/:page.xml',
+                            'constraints' => [
+                                'page' => '\d+',
+                            ],
+                            'defaults' => [
+                                'action' => 'alto-page',
+                            ],
+                        ],
+                    ],
+                    'annotation-page' => [
+                        'type' => \Laminas\Router\Http\Segment::class,
+                        'options' => [
+                            'route' => '/annotations/:page.json',
+                            'constraints' => [
+                                'page' => '\d+',
+                            ],
+                            'defaults' => [
+                                'action' => 'annotation-page',
+                            ],
+                        ],
+                    ],
                 ],
             ],
         ],
@@ -102,6 +130,8 @@ return [
             'iiifsearch_disable_search_media_values' => false,
             'iiifsearch_xml_image_match' => 'order',
             'iiifsearch_xml_fix_mode' => 'no',
+            'iiifsearch_alto_canvas_inject' => true,
+            'iiifsearch_alto_page_match' => 'order',
         ],
     ],
 ];

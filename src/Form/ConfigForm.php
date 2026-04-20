@@ -74,6 +74,35 @@ class ConfigForm extends Form
                     'id' => 'iiifsearch_xml_fix_mode',
                     'value' => 'no',
                 ],
+            ])
+
+            ->add([
+                'name' => 'iiifsearch_alto_canvas_inject',
+                'type' => Element\Checkbox::class,
+                'options' => [
+                    'label' => 'Inject ALTO seeAlso and annotations on each canvas when a multipage ALTO XML media is attached', // @translate
+                ],
+                'attributes' => [
+                    'id' => 'iiifsearch_alto_canvas_inject',
+                    'value' => true,
+                ],
+            ])
+
+            ->add([
+                'name' => 'iiifsearch_alto_page_match',
+                'type' => Element\Radio::class,
+                'options' => [
+                    'label' => 'Match multipage ALTO Page to canvas', // @translate
+                    'value_options' => [
+                        'order' => 'Media order (Page n matches the n-th non-ALTO media)', // @translate
+                        'physical_img_nr' => 'Page/@PHYSICAL_IMG_NR (1-based)', // @translate
+                        'page_id_to_media_name' => 'Page/@ID matches media file basename', // @translate
+                    ],
+                ],
+                'attributes' => [
+                    'id' => 'iiifsearch_alto_page_match',
+                    'value' => 'order',
+                ],
             ]);
 
         $inputFilter = $this->getInputFilter();
