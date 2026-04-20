@@ -35,7 +35,7 @@ class SearchController extends AbstractActionController
         if (is_numeric($id)) {
             try {
                 $item = $this->api()->read('items', $id)->getContent();
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 // See below.
             }
         } elseif (class_exists('CleanUrl\Module', false)) {

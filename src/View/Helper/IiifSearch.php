@@ -460,7 +460,7 @@ class IiifSearch extends AbstractHelper
                     $result['hits'][] = $searchHit;
                 }
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->logger->err(new Message(
                 'Error: XML alto content may be invalid for item #%1$d, index #%2$d.', // @translate
                 $this->item->id(), $indexPageXml + 1
@@ -621,7 +621,7 @@ class IiifSearch extends AbstractHelper
                     $result['hits'][] = $searchHit;
                 }
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->logger->err(new Message(
                 'Error: hOCR content may be invalid for item #%1$d, page #%2$d.', // @translate
                 $this->item->id(), $indexPageXml + 1
@@ -770,7 +770,7 @@ class IiifSearch extends AbstractHelper
                     $result['hits'][] = $searchHit;
                 }
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->logger->err(new Message(
                 'Error: PDF to XML conversion failed for item #%1$d, media file #%2$d.', // @translate
                 $this->item->id(), $this->mediaXmlFirst->id()
@@ -1032,7 +1032,7 @@ class IiifSearch extends AbstractHelper
                 $searchHit['match'] = implode(' ', array_unique($hitMatches));
                 $result['hits'][] = $searchHit;
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->logger->err(new Message(
                 'Error: PDF to TSV conversion failed for item #%1$d, media #%2$d.', // @translate
                 $this->item->id(),
@@ -1534,7 +1534,7 @@ class IiifSearch extends AbstractHelper
                 }
                 $currentXml = @simplexml_load_string($xmlContent, null, LIBXML_NONET);
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             if ($hasNoMedia || !$this->mediaXmlFirst) {
                 $this->logger->err(new Message(
                     'Error: XML content is incorrect for item #%d.', // @translate
