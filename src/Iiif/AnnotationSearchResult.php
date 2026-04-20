@@ -70,7 +70,7 @@ class AnnotationSearchResult extends AbstractSimpleType
      */
     protected $_box = [];
 
-    public function __construct(array $data = null)
+    public function __construct(?array $data = null)
     {
         // Parent is required to init data.
         parent::__construct($data);

@@ -29,7 +29,7 @@ class AnnotationSearchResultTest extends TestCase
         ];
     }
 
-    protected function buildAnnotation(array $result = null): AnnotationSearchResult
+    protected function buildAnnotation(?array $result = null): AnnotationSearchResult
     {
         $annotation = new AnnotationSearchResult();
         $annotation->initOptions([

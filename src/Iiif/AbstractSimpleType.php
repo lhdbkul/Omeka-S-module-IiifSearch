@@ -70,7 +70,7 @@ abstract class AbstractSimpleType extends ArrayObject implements JsonSerializabl
      */
     protected $_options = [];
 
-    public function __construct(array $data = null)
+    public function __construct(?array $data = null)
     {
         $input = $data
             ? array_replace($this->_storage, $data)
