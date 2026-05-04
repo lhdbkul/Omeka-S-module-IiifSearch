@@ -74,6 +74,33 @@ class SearchController extends AbstractActionController
         ]);
     }
 
+    public function index2Action()
+    {
+        $id = $this->params('id');
+        if (empty($id)) {
+            return $this->errorResponse(Response::STATUS_CODE_400, 'Missing or empty query.'); // @translate
+        }
+
+        $q = (string) $this->params()->fromQuery('q');
+        if (!strlen($q)) {
+            return $this->errorResponse(Response::STATUS_CODE_400, 'Missing or empty query.'); // @translate
+        }
+
+        $item = $this->resolveItem();
+        if (empty($item)) {
+            return $this->errorResponse(Response::STATUS_CODE_404, 'Resource not found or unavailable.'); // @translate
+        }
+
+        $iiifSearch2 = $this->viewHelpers()->get('iiifSearch2');
+        $searchResponse = $iiifSearch2($item);
+
+        if (!$searchResponse) {
+            return $this->errorResponse(Response::STATUS_CODE_400, 'Search is not available for this resource.'); // @translate
+        }
+
+        return $this->jsonLd($searchResponse);
+    }
+
     /**
      * Serve a single page extracted from a multipage ALTO XML document.
      */

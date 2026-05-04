@@ -13,6 +13,24 @@ class ConfigForm extends Form
     {
         $this
             ->add([
+                'name' => 'iiifsearch_versions',
+                'type' => Element\MultiCheckbox::class,
+                'options' => [
+                    'element_group' => 'search',
+                    'label' => 'IIIF Content Search API versions', // @translate
+                    'info' => 'Versions of the Search API exposed in IIIF manifests. Endpoints remain available regardless: /search and /search/1 for v1, /search/2 for v2.', // @translate
+                    'value_options' => [
+                        '1' => 'Search API 1.0', // @translate
+                        '2' => 'Search API 2.0', // @translate
+                    ],
+                ],
+                'attributes' => [
+                    'id' => 'iiifsearch_versions',
+                    'value' => ['1', '2'],
+                ],
+            ])
+
+            ->add([
                 'name' => 'iiifsearch_minimum_query_length',
                 'type' => Element\Number::class,
                 'options' => [
@@ -107,6 +125,10 @@ class ConfigForm extends Form
 
         $inputFilter = $this->getInputFilter();
         $inputFilter
+            ->add([
+                'name' => 'iiifsearch_versions',
+                'required' => false,
+            ])
             ->add([
                 'name' => 'iiifsearch_xml_fix_mode',
                 'required' => false,

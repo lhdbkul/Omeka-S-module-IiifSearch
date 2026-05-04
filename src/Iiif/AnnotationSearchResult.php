@@ -138,6 +138,21 @@ class AnnotationSearchResult extends AbstractSimpleType
             . '#xywh=' . $this->_box['x'] . ',' . $this->_box['y'] . ',' . $this->_box['w'] . ',' . $this->_box['h'];
     }
 
+    public function getResult(): array
+    {
+        return $this->_result;
+    }
+
+    public function getBox(): array
+    {
+        return $this->_box;
+    }
+
+    public function getOptions(): array
+    {
+        return $this->_options;
+    }
+
     protected function prepareBox(): AbstractSimpleType
     {
         if (empty($this->_result['resource'])) {

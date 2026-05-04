@@ -213,28 +213,55 @@ class Module extends AbstractModule
         /** @var \IiifServer\Iiif\Manifest $manifest */
         $manifest = $event->getParam('manifest');
 
-        $searchUrl = $fixSlash($urlHelper('iiifsearch/search', ['id' => $identifier], ['force_canonical' => true]));
+        $versions = $settings->get('iiifsearch_versions', ['1', '2']);
+        $versions = array_values(array_intersect(['1', '2'], (array) $versions));
+        if (empty($versions)) {
+            return;
+        }
+
+        $searchUrlV1 = $fixSlash($urlHelper('iiifsearch/search', ['id' => $identifier], ['force_canonical' => true]));
+        $searchUrlV2 = $fixSlash($urlHelper('iiifsearch/search-2', ['id' => $identifier], ['force_canonical' => true]));
+
         $isVersion2 = !is_object($manifest);
         if ($isVersion2) {
-            $manifest['service'][] = [
-                '@context' => 'http://iiif.io/api/search/1/context.json',
-                '@id' => $searchUrl,
-                'profile' => 'http://iiif.io/api/search/1/search',
-                'label' => 'Search within this manifest', // @translate
-            ];
+            // Manifest IIIF Presentation 2 only carries Search v1 services.
+            if (in_array('1', $versions, true)) {
+                $manifest['service'][] = [
+                    '@context' => 'http://iiif.io/api/search/1/context.json',
+                    '@id' => $searchUrlV1,
+                    'profile' => 'http://iiif.io/api/search/1/search',
+                    'label' => 'Search within this manifest', // @translate
+                ];
+            }
         } else {
-            $service1 = [
-                '@context' => 'http://iiif.io/api/search/1/context.json',
-                'id' => $searchUrl,
-                'type' => 'SearchService1',
-                'profile' => 'http://iiif.io/api/search/1/search',
-                'label' => 'Search within this manifest', // @translate
-            ];
+            $services = [];
+            if (in_array('1', $versions, true)) {
+                $services[] = [
+                    '@context' => 'http://iiif.io/api/search/1/context.json',
+                    'id' => $searchUrlV1,
+                    'type' => 'SearchService1',
+                    'profile' => 'http://iiif.io/api/search/1/search',
+                    'label' => 'Search within this manifest', // @translate
+                ];
+            }
+            if (in_array('2', $versions, true)) {
+                $services[] = [
+                    '@context' => 'http://iiif.io/api/search/2/context.json',
+                    'id' => $searchUrlV2,
+                    'type' => 'SearchService2',
+                    'profile' => 'http://iiif.io/api/search/2/search',
+                    'label' => 'Search within this manifest', // @translate
+                ];
+            }
             // Check version of module IiifServer.
             if (method_exists($manifest, 'getPropertyRequirements')) {
-                $manifest['service'][] = new \IiifServer\Iiif\Service($service1);
+                foreach ($services as $service) {
+                    $manifest['service'][] = new \IiifServer\Iiif\Service($service);
+                }
             } else {
-                $manifest->appendService(new \IiifServer\Iiif\Service($resource, $service1));
+                foreach ($services as $service) {
+                    $manifest->appendService(new \IiifServer\Iiif\Service($resource, $service));
+                }
             }
         }
 

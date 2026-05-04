@@ -12,6 +12,7 @@ return [
         'factories' => [
             'fixUtf8' => Service\ViewHelper\FixUtf8Factory::class,
             'iiifSearch' => Service\ViewHelper\IiifSearchFactory::class,
+            'iiifSearch2' => Service\ViewHelper\IiifSearch2Factory::class,
             'xmlAltoSingle' => Service\ViewHelper\XmlAltoSingleFactory::class,
             'xmlAltoSplitter' => Service\ViewHelper\XmlAltoSplitterFactory::class,
         ],
@@ -66,6 +67,30 @@ return [
                                 'controller' => 'Search',
                                 'action' => 'index',
                                 'service' => 'SearchService1',
+                            ],
+                        ],
+                    ],
+                    'search-1' => [
+                        'type' => \Laminas\Router\Http\Literal::class,
+                        'options' => [
+                            'route' => '/search/1',
+                            'defaults' => [
+                                '__NAMESPACE__' => 'IiifSearch\Controller',
+                                'controller' => 'Search',
+                                'action' => 'index',
+                                'service' => 'SearchService1',
+                            ],
+                        ],
+                    ],
+                    'search-2' => [
+                        'type' => \Laminas\Router\Http\Literal::class,
+                        'options' => [
+                            'route' => '/search/2',
+                            'defaults' => [
+                                '__NAMESPACE__' => 'IiifSearch\Controller',
+                                'controller' => 'Search',
+                                'action' => 'index2',
+                                'service' => 'SearchService2',
                             ],
                         ],
                     ],
@@ -126,6 +151,7 @@ return [
     ],
     'iiifsearch' => [
         'config' => [
+            'iiifsearch_versions' => ['1', '2'],
             'iiifsearch_minimum_query_length' => 3,
             'iiifsearch_disable_search_media_values' => false,
             'iiifsearch_xml_image_match' => 'order',
