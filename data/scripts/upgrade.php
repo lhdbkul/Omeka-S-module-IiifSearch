@@ -33,7 +33,32 @@ $messenger = $plugins->get('messenger');
 $siteSettings = $services->get('Omeka\Settings\Site');
 $entityManager = $services->get('Omeka\EntityManager');
 
-$this->checkExtractOcr();
+if (!$this->isModuleVersionAtLeast('Common', '3.4.85')) {
+    $message = new Message(
+        $translate('The module %1$s should be upgraded to version %2$s or later.'), // @translate
+        'Common', '3.4.85'
+    );
+    $messenger->addError($message);
+    throw new \Omeka\Module\Exception\ModuleCannotInstallException((string) $translate('Missing requirement. Unable to upgrade.')); // @translate
+}
+
+if ($this->isModuleActive('ExtractOcr') && !$this->isModuleVersionAtLeast('ExtractOcr', '3.4.11')) {
+    $message = new Message(
+        $translate('The module %1$s should be upgraded to version %2$s or later.'), // @translate
+        'ExtractOcr', '3.4.11'
+    );
+    $messenger->addError($message);
+    throw new \Omeka\Module\Exception\ModuleCannotInstallException((string) $translate('Missing requirement. Unable to upgrade.')); // @translate
+}
+
+if ($this->isModuleActive('IiifServer') && !$this->isModuleVersionAtLeast('IiifServer', '3.6.33')) {
+    $message = new Message(
+        $translate('The module %1$s should be upgraded to version %2$s or later.'), // @translate
+        'IiifServer', '3.6.33'
+    );
+    $messenger->addError($message);
+    throw new \Omeka\Module\Exception\ModuleCannotInstallException((string) $translate('Missing requirement. Unable to upgrade.')); // @translate
+}
 
 if (version_compare($oldVersion, '1.1.0', '<')) {
     $settings->delete('iiifserver_manifest_service_iiifsearch');
@@ -84,6 +109,19 @@ if (version_compare($oldVersion, '3.4.6', '<')) {
 if (version_compare($oldVersion, '3.4.10', '<')) {
     $message = new Message(
         'The module allows to do an exact search when the input is wrapped with double quotes. If wanted and if you use a tsv index, a reindexation with ExtractOcr is needed.' // @translate
+    );
+    $messenger->addSuccess($message);
+}
+
+if (version_compare($oldVersion, '3.4.14', '<')) {
+    // Enable both Search 1.0 and 2.0 services in manifests by default.
+    // The setting is left untouched if the admin has already configured it.
+    $current = $settings->get('iiifsearch_versions', null);
+    if (!is_array($current) || !$current) {
+        $settings->set('iiifsearch_versions', ['1', '2']);
+    }
+    $message = new Message(
+        'The module now supports IIIF Content Search 2.0 at /iiif-search/{id}/search/1 or /iiif-search/{id}/search/2. The existing endpoint /iiif-search/{id}/search is kept as defaut.' // @translate
     );
     $messenger->addSuccess($message);
 }

@@ -140,7 +140,21 @@ class Module extends AbstractModule
             $errors[] = (string) $message;
         }
 
-        $this->checkExtractOcr($errors);
+        if ($this->isModuleActive('ExtractOcr') && !$this->isModuleVersionAtLeast('ExtractOcr', '3.4.11')) {
+            $message = new \Omeka\Stdlib\Message(
+                $translator->translate('The module %1$s should be upgraded to version %2$s or later.'), // @translate
+                'ExtractOcr', '3.4.11'
+            );
+            $errors[] = (string) $message;
+        }
+
+        if ($this->isModuleActive('IiifServer') && !$this->isModuleVersionAtLeast('IiifServer', '3.6.33')) {
+            $message = new \Omeka\Stdlib\Message(
+                $translator->translate('The module %1$s should be upgraded to version %2$s or later.'), // @translate
+                'IiifServer', '3.6.33'
+            );
+            $errors[] = (string) $message;
+        }
 
         if ($errors) {
             throw new \Omeka\Module\Exception\ModuleCannotInstallException(
@@ -491,27 +505,5 @@ class Module extends AbstractModule
             $i++;
         }
         return null;
-    }
-
-    protected function checkExtractOcr(array &$errors = []): void
-    {
-        if (class_exists('ExtractOcr\Module', false)) {
-            $services = $this->getServiceLocator();
-            $translator = $services->get('MvcTranslator');
-            $connection = $services->get('Omeka\Connection');
-            $qb = $connection->createQueryBuilder();
-            $qb
-                ->select('module.version')
-                ->from('module', 'module')
-                ->where($qb->expr()->eq('module.id', ':module'));
-            $moduleVersion = $connection->executeQuery($qb, ['module' => 'ExtractOcr'])->fetchOne();
-            if (version_compare($moduleVersion, '3.4.8', '<')) {
-                $message = new \Omeka\Stdlib\Message(
-                    $translator->translate('The module %1$s should be upgraded to version %2$s or later.'), // @translate
-                    'ExtractOcr', '3.4.8'
-                );
-                $errors[] = (string) $message;
-            }
-        }
     }
 }
