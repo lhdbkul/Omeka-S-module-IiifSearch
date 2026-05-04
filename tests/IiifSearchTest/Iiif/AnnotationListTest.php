@@ -2,8 +2,8 @@
 
 namespace IiifSearchTest\Iiif;
 
-use IiifSearch\Iiif\AnnotationList;
-use IiifSearch\Iiif\AnnotationSearchResult;
+use IiifSearch\Iiif\Search1\AnnotationList;
+use IiifSearch\Iiif\Search1\AnnotationSearchResult;
 use PHPUnit\Framework\TestCase;
 
 class AnnotationListTest extends TestCase

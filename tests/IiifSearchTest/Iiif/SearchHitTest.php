@@ -2,7 +2,7 @@
 
 namespace IiifSearchTest\Iiif;
 
-use IiifSearch\Iiif\SearchHit;
+use IiifSearch\Iiif\Search1\SearchHit;
 use PHPUnit\Framework\TestCase;
 
 class SearchHitTest extends TestCase

@@ -99,10 +99,8 @@ class SearchFulltextTsvTest extends TestCase
         $filepath = $this->getFixturePath('sample-byword.tsv');
         $result = $this->callProtected($helper, 'searchFulltextTsv', [$filepath, true]);
         // First hit on page 1, second on page 2.
-        $firstOn = $result['resources'][0]->getContent()['on'];
-        $secondOn = $result['resources'][1]->getContent()['on'];
-        $this->assertStringContainsString('/p1#xywh=', $firstOn);
-        $this->assertStringContainsString('/p2#xywh=', $secondOn);
+        $this->assertSame('1', $result['resources'][0]['page']['number']);
+        $this->assertSame('2', $result['resources'][1]['page']['number']);
     }
 
     public function testTsvByWordZoneCoordinates(): void
@@ -110,12 +108,11 @@ class SearchFulltextTsvTest extends TestCase
         $helper = $this->buildTsvHelper(['fox']);
         $filepath = $this->getFixturePath('sample-byword.tsv');
         $result = $this->callProtected($helper, 'searchFulltextTsv', [$filepath, true]);
-        // Both results should have xywh in on field.
-        $firstOn = $result['resources'][0]->getContent()['on'];
-        $this->assertMatchesRegularExpression(
-            '/xywh=\d+,\d+,\d+,\d+/',
-            $firstOn
-        );
+        $first = $result['resources'][0];
+        $this->assertMatchesRegularExpression('/^\d+$/', (string) $first['zone']['left']);
+        $this->assertMatchesRegularExpression('/^\d+$/', (string) $first['zone']['top']);
+        $this->assertMatchesRegularExpression('/^\d+$/', (string) $first['zone']['width']);
+        $this->assertMatchesRegularExpression('/^\d+$/', (string) $first['zone']['height']);
     }
 
     public function testTsvByWordNoMatch(): void

@@ -103,10 +103,11 @@ class SearchFulltextAltoTest extends TestCase
         $result = $this->callProtected($helper, 'searchFullTextAlto', [$xml]);
         // First result: page 1, "fox" at HPOS=550, VPOS=100, WIDTH=70,
         // HEIGHT=40.
-        $firstResource = $result['resources'][0];
-        $content = $firstResource->getContent();
-        // The "on" field should contain xywh coordinates.
-        $this->assertStringContainsString('#xywh=', $content['on']);
+        $first = $result['resources'][0];
+        $this->assertSame('550', $first['zone']['left']);
+        $this->assertSame('100', $first['zone']['top']);
+        $this->assertSame('70', $first['zone']['width']);
+        $this->assertSame('40', $first['zone']['height']);
     }
 
     public function testAltoSearchCaseInsensitive(): void
@@ -134,11 +135,9 @@ class SearchFulltextAltoTest extends TestCase
         $xml = $this->loadAltoXml();
         $result = $this->callProtected($helper, 'searchFullTextAlto', [$xml]);
         // First hit is on page 1.
-        $firstContent = $result['resources'][0]->getContent();
-        $this->assertStringContainsString('/p1#xywh=', $firstContent['on']);
+        $this->assertSame('1', $result['resources'][0]['page']['number']);
         // Second hit is on page 2.
-        $secondContent = $result['resources'][1]->getContent();
-        $this->assertStringContainsString('/p2#xywh=', $secondContent['on']);
+        $this->assertSame('2', $result['resources'][1]['page']['number']);
     }
 
     public function testAltoSearchMediaIds(): void

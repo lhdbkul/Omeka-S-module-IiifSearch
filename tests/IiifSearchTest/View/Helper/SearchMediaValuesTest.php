@@ -115,11 +115,13 @@ class SearchMediaValuesTest extends TestCase
         $this->assertNotNull($result);
         $this->assertArrayHasKey('resources', $result);
         $this->assertArrayHasKey('hit', $result);
-        // Each resource should have IIIF annotation content.
-        $content = $result['resources'][0]->getContent();
-        $this->assertArrayHasKey('@type', $content);
-        $this->assertArrayHasKey('resource', $content);
-        $this->assertArrayHasKey('on', $content);
+        // Each resource carries the neutral pivot keys consumed by builders.
+        $first = $result['resources'][0];
+        $this->assertArrayHasKey('image', $first);
+        $this->assertArrayHasKey('page', $first);
+        $this->assertArrayHasKey('zone', $first);
+        $this->assertArrayHasKey('chars', $first);
+        $this->assertArrayHasKey('hit', $first);
     }
 
     public function testSearchMediaValuesEmptyQuery(): void
