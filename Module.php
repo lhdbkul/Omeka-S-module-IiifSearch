@@ -34,10 +34,27 @@ class Module extends AbstractModule
             ->attach(MvcEvent::EVENT_ROUTE, [$this, 'reencodeIdentifierSlashes'], 1000);
     }
 
+
     /**
-     * Re-encode decoded slashes in IIIF Search URL identifiers.
+     * Re-encode decoded slashes in iiif url identifiers.
      *
+     * When apache or a reverse proxy does not preserve encoded slashes (%2F),
+     * they get decoded to "/" in the path, breaking segment routes that expect
+     * the identifier as a single path segment. This listener detects where the
+     * identifier ends by looking for known iiif keywords (manifest, canvas,
+     * info.json, etc.) from the right of the path, then re-encodes all "/"
+     * within the identifier portion.
+     *
+     * This is a no-op when identifiers contain no decoded slashes (e.g. simple
+     * numeric ids or already-encoded identifiers).
+     *
+     * @see https://iiif.io/api/presentation/3.0/
+     * @see https://iiif.io/api/presentation/2.1/
+     * @see https://iiif.io/api/image/3.0/
+     *
+     * Adapted and copied id:
      * @see \IiifServer\Module::reencodeIdentifierSlashes()
+     * @see \IiifSearch\Module::reencodeIdentifierSlashes()
      */
     public function reencodeIdentifierSlashes(MvcEvent $event): void
     {
@@ -48,7 +65,7 @@ class Module extends AbstractModule
 
         $path = $request->getUri()->getPath();
 
-        // Quick check: only process IIIF Search paths.
+        // Quick check: only process iiif search paths.
         if (strpos($path, '/iiif-search/') === false) {
             return;
         }
@@ -58,23 +75,25 @@ class Module extends AbstractModule
             return;
         }
 
+        // Remove leading slash.
         $remainder = substr($matches[2], 1);
         $segments = explode('/', $remainder);
         $count = count($segments);
 
+        // A single segment means no slashes in the identifier.
         if ($count <= 1) {
             return;
         }
 
-        // Known IIIF Search keywords that appear after the identifier.
-        // @see https://iiif.io/api/search/1.0/
-        // @see https://iiif.io/api/search/2.0/
+        // Known iiif Search keywords that appear after the identifier.
         static $searchKeywords = [
             'search' => true,
             'autocomplete' => true,
             'list' => true,
         ];
 
+        // Scan from the right to find the first iiif keyword.
+        // Start at index 1 (the identifier needs at least one segment).
         $suffixCount = 0;
         for ($i = $count - 1; $i >= 1; $i--) {
             if (isset($searchKeywords[$segments[$i]])) {
@@ -83,19 +102,22 @@ class Module extends AbstractModule
             }
         }
 
-        $idCount = $count - $suffixCount;
-        if ($idCount <= 1) {
+        $identifierCount = $count - $suffixCount;
+        if ($identifierCount <= 1) {
             return;
         }
 
-        $idParts = array_slice($segments, 0, $idCount);
-        $suffixParts = array_slice($segments, $idCount);
-        $newRemainder = implode('%2F', $idParts);
+        // Re-encode slashes within the identifier portion.
+        $identifierParts = array_slice($segments, 0, $identifierCount);
+        $encodedIdentifier = implode('%2F', $identifierParts);
+
+        $suffixParts = array_slice($segments, $identifierCount);
         if ($suffixParts) {
-            $newRemainder .= '/' . implode('/', $suffixParts);
+            $encodedIdentifier .= '/' . implode('/', $suffixParts);
         }
 
-        $newPath = $matches[1] . '/' . $newRemainder;
+        $iiifBase = $matches[1];
+        $newPath = $iiifBase . '/' . $encodedIdentifier;
         if ($newPath !== $path) {
             $request->getUri()->setPath($newPath);
         }
