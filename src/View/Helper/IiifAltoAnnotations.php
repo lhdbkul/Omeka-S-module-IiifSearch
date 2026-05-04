@@ -73,6 +73,11 @@ class IiifAltoAnnotations extends AbstractHelper
         $scaleX = ($altoWidth > 0 && $canvasWidth > 0) ? $canvasWidth / $altoWidth : 1.0;
         $scaleY = ($altoHeight > 0 && $canvasHeight > 0) ? $canvasHeight / $altoHeight : 1.0;
 
+        // SimpleXML's registerXPathNamespace is not inherited by sub-nodes:
+        // re-register on every node before each xpath() call to avoid
+        // "Undefined namespace prefix" warnings.
+        $altoPage->registerXPathNamespace('a', $altoNs);
+
         $items = [];
         $index = 0;
         foreach ($altoPage->xpath('.//a:TextLine') as $line) {
@@ -83,6 +88,7 @@ class IiifAltoAnnotations extends AbstractHelper
             if ($width <= 0 || $height <= 0) {
                 continue;
             }
+            $line->registerXPathNamespace('a', $altoNs);
 
             $text = '';
             foreach ($line->xpath('a:String') as $string) {

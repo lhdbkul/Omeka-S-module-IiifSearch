@@ -118,11 +118,17 @@ class SearchController extends AbstractActionController
             return $this->errorResponse(Response::STATUS_CODE_404, 'No ALTO page available.'); // @translate
         }
 
+        $mtime = (int) filemtime($path);
+        $etag = $this->buildEtag('alto', $item->id(), $pageIndex, $mtime);
+        if ($notModified = $this->respondNotModifiedIfMatch($etag, $mtime)) {
+            return $notModified;
+        }
+
         $response = $this->getResponse();
         $headers = $response->getHeaders();
         $headers->addHeaderLine('Content-Type', 'application/xml+alto; charset=utf-8');
         $headers->addHeaderLine('Content-Length', (string) filesize($path));
-        $headers->addHeaderLine('Cache-Control', 'public, max-age=3600');
+        $this->addCacheHeaders($headers, $etag, $mtime, 3600);
         $response->setContent((string) file_get_contents($path));
         return $response;
     }
@@ -145,11 +151,20 @@ class SearchController extends AbstractActionController
             return $this->errorResponse(Response::STATUS_CODE_404, 'No ALTO page available.'); // @translate
         }
 
+        $mtime = (int) filemtime($path);
+        $etag = $this->buildEtag('annot', $item->id(), $pageIndex, $mtime);
+        if ($notModified = $this->respondNotModifiedIfMatch($etag, $mtime)) {
+            return $notModified;
+        }
+
         $annotations = $this->viewHelpers()->get('iiifAltoAnnotations');
         $page = $annotations($item, $pageIndex, $path);
         if (!$page) {
             return $this->errorResponse(Response::STATUS_CODE_500, 'Unable to build annotation page.'); // @translate
         }
+
+        $response = $this->getResponse();
+        $this->addCacheHeaders($response->getHeaders(), $etag, $mtime, 3600);
 
         return $this->jsonLd($page);
     }
@@ -183,5 +198,51 @@ class SearchController extends AbstractActionController
             'status' => 'error',
             'message' => $this->translate($message),
         ]);
+    }
+
+    /**
+     * Build a stable ETag from a kind tag and arbitrary scalar parts.
+     */
+    protected function buildEtag(string $kind, ...$parts): string
+    {
+        return '"' . $kind . '-' . substr(md5(implode('|', $parts)), 0, 16) . '"';
+    }
+
+    /**
+     * Inspect If-None-Match / If-Modified-Since on the current request and
+     * return a configured 304 response when the client's cached copy is still
+     * valid. Returns null otherwise (the caller continues normally).
+     */
+    protected function respondNotModifiedIfMatch(string $etag, int $mtime): ?\Laminas\Http\Response
+    {
+        $request = $this->getRequest();
+        $ifNoneMatch = $request->getHeader('If-None-Match');
+        $ifModifiedSince = $request->getHeader('If-Modified-Since');
+
+        $matchesEtag = $ifNoneMatch && trim($ifNoneMatch->getFieldValue()) === $etag;
+        $matchesDate = $ifModifiedSince
+            && ($since = strtotime($ifModifiedSince->getFieldValue()))
+            && $since >= $mtime;
+
+        if (!$matchesEtag && !$matchesDate) {
+            return null;
+        }
+
+        $response = $this->getResponse();
+        $response->setStatusCode(Response::STATUS_CODE_304);
+        // RFC 7232: a 304 must include validators if they would have been sent
+        // on a 200, so the client can refresh its freshness window.
+        $headers = $response->getHeaders();
+        $headers->addHeaderLine('ETag', $etag);
+        $headers->addHeaderLine('Last-Modified', gmdate('D, d M Y H:i:s', $mtime) . ' GMT');
+        $headers->addHeaderLine('Cache-Control', 'public, max-age=3600');
+        return $response;
+    }
+
+    protected function addCacheHeaders($headers, string $etag, int $mtime, int $maxAge): void
+    {
+        $headers->addHeaderLine('ETag', $etag);
+        $headers->addHeaderLine('Last-Modified', gmdate('D, d M Y H:i:s', $mtime) . ' GMT');
+        $headers->addHeaderLine('Cache-Control', 'public, max-age=' . $maxAge);
     }
 }
