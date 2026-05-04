@@ -19,7 +19,7 @@ class IiifSearchFactory
             $services->get('Omeka\ApiManager'),
             $helpers->has('derivativeList') ? $helpers->get('derivativeList') : null,
             $helpers->get('fixUtf8'),
-            $plugins->has('imageSize') ? $plugins->get('imageSize') : null,
+            $plugins->has('mediaDimension') ? $plugins->get('mediaDimension') : null,
             $services->get('Omeka\Logger'),
             $helpers->get('xmlAltoSingle'),
             $basePath,

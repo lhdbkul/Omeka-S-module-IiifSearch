@@ -8,7 +8,7 @@ use Exception;
 use IiifSearch\Iiif\AnnotationList;
 use IiifSearch\Iiif\AnnotationSearchResult;
 use IiifSearch\Iiif\SearchHit;
-use IiifServer\Mvc\Controller\Plugin\ImageSize;
+use IiifServer\Mvc\Controller\Plugin\MediaDimension;
 use Laminas\Log\Logger;
 use Laminas\View\Helper\AbstractHelper;
 use Omeka\Api\Manager as ApiManager;
@@ -76,9 +76,9 @@ class IiifSearch extends AbstractHelper
     protected $fixUtf8;
 
     /**
-     * @var \IiifServer\Mvc\Controller\Plugin\ImageSize
+     * @var \IiifServer\Mvc\Controller\Plugin\MediaDimension|null
      */
-    protected $imageSize;
+    protected $mediaDimension;
 
     /**
      * @var \Laminas\Log\Logger
@@ -176,7 +176,7 @@ class IiifSearch extends AbstractHelper
         ApiManager $api,
         ?DerivativeList $derivativeList,
         FixUtf8 $fixUtf8,
-        ?ImageSize $imageSize,
+        ?MediaDimension $mediaDimension,
         Logger $logger,
         XmlAltoSingle $xmlAltoSingle,
         string $basePath,
@@ -187,7 +187,7 @@ class IiifSearch extends AbstractHelper
         $this->api = $api;
         $this->derivativeList = $derivativeList;
         $this->fixUtf8 = $fixUtf8;
-        $this->imageSize = $imageSize;
+        $this->mediaDimension = $mediaDimension;
         $this->logger = $logger;
         $this->xmlAltoSingle = $xmlAltoSingle;
         $this->basePath = $basePath;
@@ -1265,8 +1265,8 @@ class IiifSearch extends AbstractHelper
                     ];
                 } elseif ($media->hasOriginal() && strtok($mediaType, '/') === 'image') {
                     $size = ['id' => $mediaId];
-                    $size += $this->imageSize
-                        ? $this->imageSize->__invoke($media, 'original')
+                    $size += $this->mediaDimension
+                        ? $this->mediaDimension->__invoke($media, 'original')
                         : $this->imageSizeLocal($media);
                     $size['source'] = $media->source();
                     $this->imageSizes[] = $size;
