@@ -13,6 +13,7 @@ use Common\TraitModule;
 use Laminas\EventManager\Event;
 use Laminas\EventManager\SharedEventManagerInterface;
 use Laminas\Mvc\MvcEvent;
+use Laminas\View\Renderer\PhpRenderer;
 use Omeka\Module\AbstractModule;
 
 class Module extends AbstractModule
@@ -133,6 +134,81 @@ class Module extends AbstractModule
             'iiifserver.manifest',
             [$this, 'handleIiifServerManifest']
         );
+    }
+
+    public function getConfigForm(PhpRenderer $renderer)
+    {
+        $services = $this->getServiceLocator();
+        $settings = $services->get('Omeka\Settings');
+        $formManager = $services->get('FormElementManager');
+
+        $this->initDataToPopulate($settings, 'config');
+        $data = $this->prepareDataToPopulate($settings, 'config');
+        if ($data === null) {
+            return null;
+        }
+
+        $form = $formManager->get(\IiifSearch\Form\ConfigForm::class);
+        $form->init();
+        $form->setData($data);
+        $form->prepare();
+
+        $view = $renderer;
+        $translate = $view->plugin('translate');
+        $escape = $view->plugin('escapeHtml');
+
+        // Dispatch elements to tabs using element_groups.
+        $elementGroups = $form->getOption('element_groups') ?: [];
+        $tabs = array_fill_keys(array_keys($elementGroups), '');
+        $ungrouped = '';
+
+        foreach ($form as $element) {
+            if ($element instanceof \Laminas\Form\FieldsetInterface) {
+                $group = $element->getOption('element_group');
+                if ($group && isset($tabs[$group])) {
+                    $tabs[$group] .= $view->formCollection($element);
+                }
+                continue;
+            }
+            $group = $element->getOption('element_group');
+            if ($group && isset($tabs[$group])) {
+                $tabs[$group] .= $view->formRow($element);
+            } else {
+                $ungrouped .= $view->formRow($element);
+            }
+        }
+
+        $firstGroup = array_key_first($elementGroups);
+        if ($firstGroup && $ungrouped !== '') {
+            $tabs[$firstGroup] = $ungrouped . $tabs[$firstGroup];
+        }
+
+        // Module navigation bar shared with IiifServer and ImageServer.
+        $iiifModules = ['IiifServer', 'IiifSearch', 'ImageServer'];
+        $moduleNav = $view->moduleConfigNav($iiifModules, 'IiifSearch');
+
+        // Build tabs.
+        $tabNav = '';
+        $tabContent = '';
+        $isFirst = true;
+        foreach ($elementGroups as $groupName => $groupLabel) {
+            if (empty($tabs[$groupName])) {
+                continue;
+            }
+            $activeClass = $isFirst ? ' class="active"' : '';
+            $sectionClass = $isFirst ? 'section active' : 'section';
+            $tabNav .= '<li' . $activeClass . '><a href="#iiifsearch-' . $groupName . '">'
+                . $escape($translate($groupLabel)) . '</a></li>';
+            $tabContent .= '<div id="iiifsearch-' . $groupName . '" class="' . $sectionClass . '">'
+                . $tabs[$groupName] . '</div>';
+            $isFirst = false;
+        }
+
+        return $moduleNav
+            . '<ul class="section-nav" style="list-style:none;padding:0;">'
+            . $tabNav
+            . '</ul>'
+            . $tabContent;
     }
 
     public function handleIiifServerManifest(Event $event): void

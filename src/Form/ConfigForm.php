@@ -9,9 +9,16 @@ use Laminas\Form\Form;
 
 class ConfigForm extends Form
 {
+    protected $elementGroups = [
+        'search' => 'Search', // @translate
+        'ocr' => 'OCR', // @translate
+    ];
+
     public function init(): void
     {
         $this
+            ->setOption('element_groups', $this->elementGroups)
+
             ->add([
                 'name' => 'iiifsearch_versions',
                 'type' => Element\MultiCheckbox::class,
@@ -34,6 +41,7 @@ class ConfigForm extends Form
                 'name' => 'iiifsearch_minimum_query_length',
                 'type' => Element\Number::class,
                 'options' => [
+                    'element_group' => 'search',
                     'label' => 'Minimum query length', // @translate
                 ],
                 'attributes' => [
@@ -50,6 +58,7 @@ class ConfigForm extends Form
                 'name' => 'iiifsearch_disable_search_media_values',
                 'type' => Element\Checkbox::class,
                 'options' => [
+                    'element_group' => 'search',
                     'label' => 'Disable search in media values', // @translate
                 ],
                 'attributes' => [
@@ -63,6 +72,7 @@ class ConfigForm extends Form
                 'name' => 'iiifsearch_xml_image_match',
                 'type' => Element\Radio::class,
                 'options' => [
+                    'element_group' => 'ocr',
                     'label' => 'Match images and xmls when they are multiple', // @translate
                     'value_options' => [
                         'order' => 'Media order (page_001.jpg, alto_001.xml, page_002.jpg, alto_002.xml, …)', // @translate
@@ -80,6 +90,7 @@ class ConfigForm extends Form
                 'name' => 'iiifsearch_xml_fix_mode',
                 'type' => Element\Radio::class,
                 'options' => [
+                    'element_group' => 'ocr',
                     'label' => 'Fix bad xml and invalid utf-8 characters', // @translate
                     'value_options' => [
                         'no' => 'No', // @translate
@@ -98,6 +109,7 @@ class ConfigForm extends Form
                 'name' => 'iiifsearch_alto_canvas_inject',
                 'type' => Element\Checkbox::class,
                 'options' => [
+                    'element_group' => 'ocr',
                     'label' => 'Inject ALTO seeAlso and annotations on each canvas when a multipage ALTO XML media is attached', // @translate
                 ],
                 'attributes' => [
@@ -110,6 +122,7 @@ class ConfigForm extends Form
                 'name' => 'iiifsearch_alto_page_match',
                 'type' => Element\Radio::class,
                 'options' => [
+                    'element_group' => 'ocr',
                     'label' => 'Match multipage ALTO Page to canvas', // @translate
                     'value_options' => [
                         'order' => 'Media order (Page n matches the n-th non-ALTO media)', // @translate
