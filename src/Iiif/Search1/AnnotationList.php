@@ -27,44 +27,71 @@
  * knowledge of the CeCILL license and that you accept its terms.
  */
 
-namespace IiifSearch\Iiif;
+namespace IiifSearch\Iiif\Search1;
+
+use IiifSearch\Iiif\AbstractSimpleType;
 
 /**
- * @todo Normalize for iiif 2.1/3.0.
- *
- * @link https://iiif.io/api/presentation/2.0/#embedded-content
+ * @link https://iiif.io/api/search/1.0/#presentation-api-compatible-responses
+ * @link https://iiif.io/api/presentation/2.1/#annotation-list
  *
  * This class is currently not made dependant of IiifServer\Iiif\AbstractType
  * in order to use search independantly.
  * It allows to manage future various types of annotation and triggers, in
  * particular for identifiers. It is kept light.
  */
-class SearchHit extends AbstractSimpleType
+class AnnotationList extends AbstractSimpleType
 {
     protected $_storage = [
-        // A hit is the list of all matches of a page.
-        '@type' => 'search:Hit',
-        // The list of search result ids.
-        'annotations' => [],
-        // The whole words or strings that match.
-        'match' => '',
-        // The text before the first hit.
-        'before' => null,
-        // The text after the last hit.
-        'after' => null,
+        '@context' => 'http://iiif.io/api/search/1/context.json',
+        '@id' => null,
+        '@type' => 'sc:AnnotationList',
+        'within' => null,
+        // TODO No pagination currently for search.
+        'startIndex' => 0,
+        'resources' => [],
+        'hits' => [],
     ];
 
     protected $_keys = [
+        '@context' => self::REQUIRED,
+        '@id' => self::REQUIRED,
         '@type' => self::REQUIRED,
-        'annotations' => self::REQUIRED,
-        'match' => self::REQUIRED,
-        'before' => self::RECOMMENDED,
-        'after' => self::RECOMMENDED,
+        // TODO To be checked.
+        'within' => self::OPTIONAL,
+        'startIndex' => self::OPTIONAL,
+        'resources' => self::REQUIRED,
+        'hits' => self::RECOMMENDED,
     ];
 
     public function __construct(?array $data = null)
     {
         // Parent is required to init data.
         parent::__construct($data);
+    }
+
+    public function getContent(): array
+    {
+        if (empty($this->offsetGet('@id'))) {
+            $this->offsetSet('@id', $this->id());
+        }
+        if (empty($this->offsetGet('within'))) {
+            $this->offsetSet('within', $this->within());
+        }
+        return parent::getContent();
+    }
+
+    public function id(): ?string
+    {
+        return $this->_options['requestUri'];
+    }
+
+    public function within(): array
+    {
+        // TODO Implement class Within.
+        return [
+            '@type' => 'sc:Layer',
+            'total' => count($this['resources']),
+        ];
     }
 }

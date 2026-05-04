@@ -5,9 +5,8 @@ namespace IiifSearch\View\Helper;
 use DerivativeMedia\View\Helper\DerivativeList;
 use DOMDocument;
 use Exception;
-use IiifSearch\Iiif\AnnotationList;
-use IiifSearch\Iiif\AnnotationSearchResult;
-use IiifSearch\Iiif\SearchHit;
+use IiifSearch\Iiif\Search1\AnnotationList;
+use IiifSearch\Iiif\Search1\Builder as Search1Builder;
 use IiifServer\Mvc\Controller\Plugin\MediaDimension;
 use Laminas\Log\Logger;
 use Laminas\View\Helper\AbstractHelper;
@@ -205,12 +204,30 @@ class IiifSearch extends AbstractHelper
      */
     public function __invoke(ItemRepresentation $item): ?AnnotationList
     {
+        $pivot = $this->getRawMatches($item);
+        if ($pivot === null) {
+            return null;
+        }
+        $requestUri = $this->getView()->serverUrl(true);
+        return (new Search1Builder())->build($pivot, $requestUri);
+    }
+
+    /**
+     * Run the search engine and return a neutral pivot consumed by version
+     * specific builders (Search 1.0 / Search 2.0).
+     *
+     * Returns null only when the resource does not support search at all.
+     * Returns an empty pivot (matches=[], pageHits=[]) when search is supported
+     * but the query is missing, too short, or has no match.
+     */
+    public function getRawMatches(ItemRepresentation $item): ?array
+    {
         $this->item = $item;
 
         $view = $this->getView();
 
-        // Prepare query early to manage the better search process.
-        // Limit query length to 100 characters to prevent overload.
+        // Prepare query early to manage the better search process. Limit query
+        // length to 100 characters to prevent overload.
         $this->query = mb_substr(trim((string) $view->params()->fromQuery('q')), 0, 100);
         $this->queryIsExactSearch = mb_substr($this->query, 0, 1) === '"' && mb_substr($this->query, -1) === '"';
         if ($this->queryIsExactSearch) {
@@ -224,14 +241,16 @@ class IiifSearch extends AbstractHelper
             return null;
         }
 
-        $response = new AnnotationList();
-        $response->initOptions([
-            'requestUri' => $view->serverUrl(true),
-        ]);
+        $pivot = [
+            'baseResultUrl' => '',
+            'baseCanvasUrl' => '',
+            'totalHit' => 0,
+            'matches' => [],
+            'pageHits' => [],
+        ];
 
         if (!strlen($this->query)) {
-            $response->isValid(true);
-            return $response;
+            return $pivot;
         }
 
         // TODO Add a warning when the number of images is not the same than the number of pages. But it may be complex because images are not really managed with xml files, so warn somewhere else.
@@ -246,13 +265,15 @@ class IiifSearch extends AbstractHelper
             'type' => 'canvas',
         ]) . '/p';
 
+        $pivot['baseResultUrl'] = $this->baseResultUrl;
+        $pivot['baseCanvasUrl'] = $this->baseCanvasUrl;
+
         $result = $this->searchFulltext();
 
         if ($this->searchMediaValues) {
             $resultValues = $this->searchMediaValues($result ? $result['hit'] : 0, $result ? $result['media_ids'] : []);
             if ($result === null && $resultValues === null) {
-                $response->isValid(true);
-                return $response;
+                return $pivot;
             } elseif ($result === null) {
                 $result = $resultValues;
             } elseif ($resultValues === null || $resultValues['hit'] === 0) {
@@ -264,12 +285,12 @@ class IiifSearch extends AbstractHelper
         }
 
         if ($result && $result['hit']) {
-            $response['resources'] = $result['resources'] ?? [];
-            $response['hits'] = $result['hits'] ?? [];
+            $pivot['totalHit'] = $result['hit'];
+            $pivot['matches'] = $result['resources'] ?? [];
+            $pivot['pageHits'] = $result['hits'] ?? [];
         }
 
-        $response->isValid(true);
-        return $response;
+        return $pivot;
     }
 
     /**
@@ -439,12 +460,10 @@ class IiifSearch extends AbstractHelper
 
                             $image = $this->imageSizes[$pageIndex];
 
-                            $searchResult = new AnnotationSearchResult();
-                            $searchResult->initOptions(['baseResultUrl' => $baseResultUrl, 'baseCanvasUrl' => $baseCanvasUrl]);
-                            $result['resources'][] = $searchResult->setResult(compact('resource', 'image', 'page', 'zone', 'chars', 'hit'));
+                            $result['resources'][] = compact('resource', 'image', 'page', 'zone', 'chars', 'hit');
                             $result['media_ids'][] = $image['id'];
 
-                            $hits[] = $searchResult->id();
+                            $hits[] = $hit;
                             // TODO Get matches as whole world and all matches in last time (preg_match_all).
                             // TODO Get the text before first and last hit of the page.
                             $hitMatches[] = $matches[0];
@@ -454,10 +473,10 @@ class IiifSearch extends AbstractHelper
 
                 // Add hits per page.
                 if ($hits) {
-                    $searchHit = new SearchHit();
-                    $searchHit['annotations'] = $hits;
-                    $searchHit['match'] = implode(' ', array_unique($hitMatches));
-                    $result['hits'][] = $searchHit;
+                    $result['hits'][] = [
+                        'hits' => $hits,
+                        'match' => implode(' ', array_unique($hitMatches)),
+                    ];
                 }
             }
         } catch (\Throwable $e) {
@@ -593,32 +612,20 @@ class IiifSearch extends AbstractHelper
 
                             $image = $this->imageSizes[$pageIndex];
 
-                            $searchResult = new AnnotationSearchResult();
-                            $searchResult->initOptions([
-                                'baseResultUrl' => $baseResultUrl,
-                                'baseCanvasUrl' => $baseCanvasUrl,
-                            ]);
-                            $result['resources'][] = $searchResult
-                                ->setResult(compact(
-                                    'resource', 'image', 'page',
-                                    'zone', 'chars', 'hit'
-                                ));
+                            $result['resources'][] = compact('resource', 'image', 'page', 'zone', 'chars', 'hit');
                             $result['media_ids'][] = $image['id'];
 
-                            $hits[] = $searchResult->id();
+                            $hits[] = $hit;
                             $hitMatches[] = $matches[0];
                         }
                     }
                 }
 
                 if ($hits) {
-                    $searchHit = new SearchHit();
-                    $searchHit['annotations'] = $hits;
-                    $searchHit['match'] = implode(
-                        ' ',
-                        array_unique($hitMatches)
-                    );
-                    $result['hits'][] = $searchHit;
+                    $result['hits'][] = [
+                        'hits' => $hits,
+                        'match' => implode(' ', array_unique($hitMatches)),
+                    ];
                 }
             }
         } catch (\Throwable $e) {
@@ -749,12 +756,10 @@ class IiifSearch extends AbstractHelper
                                 'height' => null,
                             ];
 
-                            $searchResult = new AnnotationSearchResult();
-                            $searchResult->initOptions(['baseResultUrl' => $baseResultUrl, 'baseCanvasUrl' => $baseCanvasUrl]);
-                            $result['resources'][] = $searchResult->setResult(compact('resource', 'image', 'page', 'zone', 'chars', 'hit'));
+                            $result['resources'][] = compact('resource', 'image', 'page', 'zone', 'chars', 'hit');
                             $result['media_ids'][] = $image['id'];
 
-                            $hits[] = $searchResult->id();
+                            $hits[] = $hit;
                             // TODO Get matches as whole world and all matches in last time (preg_match_all).
                             // TODO Get the text before first and last hit of the page.
                             $hitMatches[] = $matches[0];
@@ -764,10 +769,10 @@ class IiifSearch extends AbstractHelper
 
                 // Add hits per page.
                 if ($hits) {
-                    $searchHit = new SearchHit();
-                    $searchHit['annotations'] = $hits;
-                    $searchHit['match'] = implode(' ', array_unique($hitMatches));
-                    $result['hits'][] = $searchHit;
+                    $result['hits'][] = [
+                        'hits' => $hits,
+                        'match' => implode(' ', array_unique($hitMatches)),
+                    ];
                 }
             }
         } catch (\Throwable $e) {
@@ -1016,21 +1021,19 @@ class IiifSearch extends AbstractHelper
                 $hits = [];
                 $hitMatches = [];
                 foreach ($resultHits as $hit => $resultHit) {
-                    $searchResult = new AnnotationSearchResult();
-                    $searchResult->initOptions(['baseResultUrl' => $baseResultUrl, 'baseCanvasUrl' => $baseCanvasUrl]);
-                    $result['resources'][] = $searchResult->setResult($resultHit);
+                    $result['resources'][] = $resultHit;
                     $result['media_ids'][] = $resultHit['image']['id'];
 
-                    $hits[] = $searchResult->id();
+                    $hits[] = $hit;
                     // TODO Get matches as whole world and all matches in last time (preg_match_all).
                     // TODO Get the text before first and last hit of the page.
                     $hitMatches[] = $resultHit['chars'];
                 }
 
-                $searchHit = new SearchHit();
-                $searchHit['annotations'] = $hits;
-                $searchHit['match'] = implode(' ', array_unique($hitMatches));
-                $result['hits'][] = $searchHit;
+                $result['hits'][] = [
+                    'hits' => $hits,
+                    'match' => implode(' ', array_unique($hitMatches)),
+                ];
             }
         } catch (\Throwable $e) {
             $this->logger->err(new Message(
@@ -1136,9 +1139,7 @@ class IiifSearch extends AbstractHelper
                 'width' => $image['width'],
                 'height' => $image['height'],
             ];
-            $searchResult = new AnnotationSearchResult();
-            $searchResult->initOptions(['baseResultUrl' => $baseResultUrl, 'baseCanvasUrl' => $baseCanvasUrl]);
-            $result['resources'][] = $searchResult->setResult(compact('resource', 'image', 'page', 'zone', 'chars', 'hit'));
+            $result['resources'][] = compact('resource', 'image', 'page', 'zone', 'chars', 'hit');
         }
 
         return $result;
