@@ -24,7 +24,7 @@ class AnnotationListTest extends TestCase
         $list = $this->createList();
         $content = $list->getContent();
         $this->assertSame(
-            'http://iiif.io/api/search/0/context.json',
+            'http://iiif.io/api/search/1/context.json',
             $content['@context']
         );
     }

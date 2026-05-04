@@ -41,7 +41,7 @@ namespace IiifSearch\Iiif;
 class AnnotationList extends AbstractSimpleType
 {
     protected $_storage = [
-        '@context' => 'http://iiif.io/api/search/0/context.json',
+        '@context' => 'http://iiif.io/api/search/1/context.json',
         '@id' => null,
         '@type' => 'sc:AnnotationList',
         'within' => null,
